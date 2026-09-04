@@ -141,7 +141,11 @@ jobs:
         env:
           IMAGE: ${{ needs.build.outputs.image }}
         run: |
+          echo "Deploying image: $IMAGE"
           kustomize edit set image backend=$IMAGE
+          echo "=== GENERATED KUBERNETES MANIFEST ==="
+          kustomize build
+          echo "=== APPLYING MANIFEST ==="
           kustomize build | kubectl apply -f -
 
       - name: Verify Deployment
