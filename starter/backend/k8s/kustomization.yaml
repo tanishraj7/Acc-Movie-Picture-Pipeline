@@ -5,9 +5,4 @@ resources:
   - service.yaml
   - deployment.yaml
 
-images:
-  - name: backend
-    newName: backend
-    newTag: latest
-
 namespace: default

@@ -133,45 +133,47 @@ jobs:
             --name $EKS_CLUSTER_NAME \
             --region $AWS_REGION
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Install Kustomize
         uses: imranismail/setup-kustomize@v2
 
       - name: Deploy to Kubernetes
         working-directory: starter/backend/k8s
         env:
-          IMAGE: ${{ needs.build.outputs.image }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_BACKEND_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
+          IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
           echo "Deploying image: $IMAGE"
 
-          echo "=== ORIGINAL KUSTOMIZATION ==="
-          cat kustomization.yaml
-
-          echo "=== SETTING IMAGE ==="
-          kustomize edit set image backend=$IMAGE
-
-          echo "=== UPDATED KUSTOMIZATION ==="
-          cat kustomization.yaml
-
-          echo "=== GENERATED MANIFEST ==="
-          kustomize build
-
-          echo "=== APPLYING MANIFEST ==="
           kustomize build | kubectl apply -f -
+
+          kubectl set image deployment/backend backend=$IMAGE
+
+          echo "=== DEPLOYED IMAGE ==="
+          kubectl get deployment backend \
+            -o jsonpath="{.spec.template.spec.containers[0].image}"
+          echo ""
 
       - name: Verify Deployment
         run: |
           kubectl get deployment backend -o wide
           kubectl get pods -l app=backend -o wide
           kubectl describe pod -l app=backend
-          
+
           echo "=== IMAGE PULL MESSAGE ==="
           kubectl get pod -l app=backend \
-            -o jsonpath="{.items[0].status.containerStatuses[0].state.waiting.message}"
+            -o jsonpath="{.items[0].status.containerStatuses[0].state.waiting.message}" || true
           echo ""
-          
+
           echo "=== EVENTS ==="
           kubectl get events \
             --field-selector involvedObject.kind=Pod \
             --sort-by=.lastTimestamp
-          
+
           kubectl rollout status deployment/backend --timeout=300s
