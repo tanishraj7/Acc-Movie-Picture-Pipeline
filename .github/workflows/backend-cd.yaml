@@ -142,9 +142,19 @@ jobs:
           IMAGE: ${{ needs.build.outputs.image }}
         run: |
           echo "Deploying image: $IMAGE"
+
+          echo "=== ORIGINAL KUSTOMIZATION ==="
+          cat kustomization.yaml
+
+          echo "=== SETTING IMAGE ==="
           kustomize edit set image backend=$IMAGE
-          echo "=== GENERATED KUBERNETES MANIFEST ==="
+
+          echo "=== UPDATED KUSTOMIZATION ==="
+          cat kustomization.yaml
+
+          echo "=== GENERATED MANIFEST ==="
           kustomize build
+
           echo "=== APPLYING MANIFEST ==="
           kustomize build | kubectl apply -f -
 
