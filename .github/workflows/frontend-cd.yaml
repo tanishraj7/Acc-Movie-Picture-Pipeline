@@ -137,17 +137,47 @@ jobs:
             --name $EKS_CLUSTER_NAME \
             --region $AWS_REGION
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Install Kustomize
         uses: imranismail/setup-kustomize@v2
 
       - name: Deploy to Kubernetes
         working-directory: starter/frontend/k8s
         env:
-          IMAGE: ${{ needs.build.outputs.image }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_FRONTEND_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          kustomize edit set image frontend=$IMAGE
+          IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+          echo "Deploying image: $IMAGE"
+
           kustomize build | kubectl apply -f -
+
+          kubectl set image deployment/frontend frontend=$IMAGE
+
+          echo "=== DEPLOYED IMAGE ==="
+          kubectl get deployment frontend \
+            -o jsonpath="{.spec.template.spec.containers[0].image}"
+          echo ""
 
       - name: Verify Deployment
         run: |
+          kubectl get deployment frontend -o wide
+          kubectl get pods -l app=frontend -o wide
+          kubectl describe pod -l app=frontend
+
+          echo "=== IMAGE PULL MESSAGE ==="
+          kubectl get pod -l app=frontend \
+            -o jsonpath="{.items[0].status.containerStatuses[0].state.waiting.message}" || true
+          echo ""
+
+          echo "=== EVENTS ==="
+          kubectl get events \
+            --field-selector involvedObject.kind=Pod \
+            --sort-by=.lastTimestamp
+
           kubectl rollout status deployment/frontend --timeout=300s
