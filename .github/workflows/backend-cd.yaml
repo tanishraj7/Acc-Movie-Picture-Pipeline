@@ -147,8 +147,17 @@ jobs:
       - name: Verify Deployment
         run: |
           kubectl get deployment backend -o wide
-          kubectl get pods -o wide
-          kubectl describe deployment backend
-          kubectl describe pods -l app=backend
-          kubectl logs -l app=backend --tail=100 || true
+          kubectl get pods -l app=backend -o wide
+          kubectl describe pod -l app=backend
+          
+          echo "=== IMAGE PULL MESSAGE ==="
+          kubectl get pod -l app=backend \
+            -o jsonpath="{.items[0].status.containerStatuses[0].state.waiting.message}"
+          echo ""
+          
+          echo "=== EVENTS ==="
+          kubectl get events \
+            --field-selector involvedObject.kind=Pod \
+            --sort-by=.lastTimestamp
+          
           kubectl rollout status deployment/backend --timeout=300s
