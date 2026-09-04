@@ -146,4 +146,9 @@ jobs:
 
       - name: Verify Deployment
         run: |
+          kubectl get deployment backend -o wide
+          kubectl get pods -o wide
+          kubectl describe deployment backend
+          kubectl describe pods -l app=backend
+          kubectl logs -l app=backend --tail=100 || true
           kubectl rollout status deployment/backend --timeout=300s
