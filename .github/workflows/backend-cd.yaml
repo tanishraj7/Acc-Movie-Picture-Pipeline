@@ -65,6 +65,9 @@ jobs:
       - name: Install Pipenv
         run: pip install pipenv
 
+      - name: Install dependencies
+        run: pipenv install --dev
+
       - name: Run tests
         run: pipenv run test
 
@@ -138,51 +141,14 @@ jobs:
         env:
           IMAGE: ${{ needs.build.outputs.image }}
         run: |
-          echo "Deploying image: $IMAGE"
           kustomize edit set image backend=$IMAGE
           kustomize build | kubectl apply -f -
 
-      - name: Debug Backend Pod
-        run: |
-          echo "========================================"
-          echo "=== DEPLOYMENT STATUS ==="
-          echo "========================================"
-          kubectl get deployment backend -o wide
-
-          echo "========================================"
-          echo "=== POD STATUS ==="
-          echo "========================================"
-          kubectl get pods -l app=backend -o wide
-
-          echo "========================================"
-          echo "=== DEPLOYED IMAGE ==="
-          echo "========================================"
-          kubectl get deployment backend \
-            -o jsonpath="{.spec.template.spec.containers[0].image}"
-          echo ""
-
-          echo "========================================"
-          echo "=== POD DESCRIPTION ==="
-          echo "========================================"
-          kubectl describe pods -l app=backend
-
-          echo "========================================"
-          echo "=== POD EVENTS ==="
-          echo "========================================"
-          kubectl get events --sort-by=.lastTimestamp
-
-          echo "========================================"
-          echo "=== CONTAINER LOGS ==="
-          echo "========================================"
-          kubectl logs -l app=backend --tail=100 || true
-
-          echo "========================================"
-          echo "=== WAITING CONTAINER MESSAGE ==="
-          echo "========================================"
-          kubectl get pods -l app=backend \
-            -o jsonpath="{.items[0].status.containerStatuses[0].state.waiting.message}" || true
-          echo ""
-
       - name: Verify Deployment
         run: |
+          kubectl get deployment backend -o wide
+          kubectl get pods -o wide
+          kubectl describe deployment backend
+          kubectl describe pods -l app=backend
+          kubectl logs -l app=backend --tail=100 || true
           kubectl rollout status deployment/backend --timeout=300s
