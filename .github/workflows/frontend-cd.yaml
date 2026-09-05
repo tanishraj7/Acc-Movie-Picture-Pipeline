@@ -166,6 +166,15 @@ jobs:
 
       - name: Verify Deployment
         run: |
+          echo "=== NODES ==="
+          kubectl get nodes -o wide
+
+          echo "=== NODE DESCRIBE ==="
+          kubectl describe nodes
+
+          echo "=== NODE TAINTS ==="
+          kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{.spec.taints}{"\n\n"}{end}'
+
           echo "=== DEPLOYMENT ==="
           kubectl get deployment frontend -o wide
 
