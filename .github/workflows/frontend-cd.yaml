@@ -166,8 +166,22 @@ jobs:
 
       - name: Verify Deployment
         run: |
+          echo "=== DEPLOYMENT ==="
           kubectl get deployment frontend -o wide
+
+          echo "=== PODS ==="
           kubectl get pods -l app=frontend -o wide
+
+          echo "=== SERVICE ==="
+          kubectl get svc frontend -o wide
+
+          echo "=== ENDPOINTS ==="
+          kubectl get endpoints frontend -o wide
+
+          echo "=== ENDPOINT SLICES ==="
+          kubectl get endpointslices -l kubernetes.io/service-name=frontend -o wide
+
+          echo "=== POD DESCRIPTION ==="
           kubectl describe pod -l app=frontend
 
           echo "=== IMAGE PULL MESSAGE ==="
@@ -175,9 +189,13 @@ jobs:
             -o jsonpath="{.items[0].status.containerStatuses[0].state.waiting.message}" || true
           echo ""
 
+          echo "=== FRONTEND LOGS ==="
+          kubectl logs -l app=frontend --tail=100 || true
+
           echo "=== EVENTS ==="
           kubectl get events \
             --field-selector involvedObject.kind=Pod \
             --sort-by=.lastTimestamp
 
+          echo "=== ROLLOUT STATUS ==="
           kubectl rollout status deployment/frontend --timeout=300s
